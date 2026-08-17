@@ -1,0 +1,17 @@
+{
+  "name": "drainguard-mesh",
+  "version": "2.0.0",
+  "description": "Urban Flood Prevention and Drainage Monitoring Platform with IoT Hardware Integration",
+  "main": "server/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server/server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "ws": "^8.18.0"
+  }
+}

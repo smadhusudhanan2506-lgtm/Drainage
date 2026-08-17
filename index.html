@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="DrainGuard Mesh — Real-time urban flood prevention and drainage monitoring platform for municipal operators. Monitor underground drainage networks, detect blockages, and coordinate maintenance.">
+  <meta name="theme-color" content="#0a1628">
+  <title>DrainGuard Mesh — Urban Drainage Monitoring</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>🌊</text></svg>">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ── Header ────────────────────────────────────────────── -->
+  <header id="header">
+    <div class="logo">
+      <div class="logo-icon">🌊</div>
+      <span>DrainGuard<span style="color: var(--clr-text-accent); font-weight: 300;"> Mesh</span></span>
+    </div>
+
+    <div id="risk-badge" class="risk-badge normal">NORMAL</div>
+
+    <div class="header-stats">
+      <div class="header-stat">
+        <span>🕐</span>
+        <span class="value" id="header-clock">--:--:--</span>
+      </div>
+      <div class="header-stat">
+        <span>📡</span>
+        <span>Sensors:</span>
+        <span class="value" id="header-sensors">14/14</span>
+      </div>
+      <div class="header-stat">
+        <span>🔔</span>
+        <span>Alerts:</span>
+        <span class="value" id="header-alerts">0</span>
+      </div>
+      <button class="map-btn" id="playback-btn" title="Historical Playback" style="width:auto; padding: 0 10px; font-size: 11px; gap: 4px; display: inline-flex;">
+        ⏮ Playback
+      </button>
+      <button class="map-btn" id="audio-toggle" title="Toggle Audio Alerts">🔔</button>
+    </div>
+  </header>
+
+  <!-- ── Maps Area ─────────────────────────────────────────── -->
+  <section id="maps-area">
+
+    <!-- Underground Map -->
+    <div class="map-container" id="underground-map">
+      <div class="map-title">⬇ Underground Drainage Network</div>
+      <canvas id="underground-canvas"></canvas>
+      <div class="map-controls">
+        <button class="map-btn" id="ug-zoom-in" title="Zoom In">+</button>
+        <button class="map-btn" id="ug-zoom-out" title="Zoom Out">−</button>
+        <button class="map-btn" id="ug-reset" title="Reset View">⟳</button>
+      </div>
+    </div>
+
+    <!-- Above-Ground Map -->
+    <div class="map-container" id="aboveground-map">
+      <div class="map-title">⬆ Above-Ground City View</div>
+      <canvas id="aboveground-canvas"></canvas>
+      <div class="map-controls">
+        <button class="map-btn" id="ag-zoom-in" title="Zoom In">+</button>
+        <button class="map-btn" id="ag-zoom-out" title="Zoom Out">−</button>
+        <button class="map-btn" id="ag-reset" title="Reset View">⟳</button>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ── Bottom Stats Panel ────────────────────────────────── -->
+  <section id="bottom-panel">
+    <div class="stat-cards">
+      <div class="stat-card">
+        <div class="sc-label">Online Sensors</div>
+        <div class="sc-value green" id="stat-online">14/14</div>
+        <div class="sc-sub" id="stat-online-sub">All sensors online</div>
+      </div>
+      <div class="stat-card">
+        <div class="sc-label">Active Alerts</div>
+        <div class="sc-value green" id="stat-alerts">0</div>
+        <div class="sc-sub">System nominal</div>
+      </div>
+      <div class="stat-card">
+        <div class="sc-label">Avg Battery</div>
+        <div class="sc-value green" id="stat-battery">—%</div>
+        <div class="sc-sub">Across all sensors</div>
+      </div>
+      <div class="stat-card">
+        <div class="sc-label">Network Uptime</div>
+        <div class="sc-value green" id="stat-network">99.8%</div>
+        <div class="sc-sub">Last 24 hours</div>
+      </div>
+      <div class="stat-card">
+        <div class="sc-label">Pipe Segments</div>
+        <div class="sc-value blue" id="stat-pipes">29 OK</div>
+        <div class="sc-sub">All segments clear</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Sidebar ───────────────────────────────────────────── -->
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <h3>📋 Control Panel</h3>
+      <span class="alert-count zero" id="alert-count">0</span>
+    </div>
+
+    <div class="sidebar-tabs">
+      <button class="sidebar-tab active" data-panel="alerts-panel">Alerts</button>
+      <button class="sidebar-tab" data-panel="health-panel">Health</button>
+      <button class="sidebar-tab" data-panel="maint-panel">Maint.</button>
+    </div>
+
+    <!-- Alerts Panel -->
+    <div class="sidebar-panel" id="alerts-panel" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+      <div class="alert-list" id="alert-list">
+        <div class="empty-state">
+          <div class="es-icon">✅</div>
+          <div>No active alerts</div>
+          <div style="margin-top:4px;font-size:11px;color:var(--clr-text-dim)">System operating normally</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Health Panel -->
+    <div class="sidebar-panel" id="health-panel" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+      <div class="health-list" id="health-list"></div>
+    </div>
+
+    <!-- Maintenance Panel -->
+    <div class="sidebar-panel" id="maint-panel" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+      <div class="maint-list" id="maint-list">
+        <div class="empty-state">
+          <div class="es-icon">🔧</div>
+          <div>No active work orders</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<!-- ── Playback Bar ──────────────────────────────────────── -->
+<div id="playback-bar">
+  <span class="pb-label">📼 PLAYBACK</span>
+  <button class="pb-btn" id="pb-play" title="Play / Pause">▶</button>
+  <button class="pb-btn" id="pb-stop" title="Stop">⏹</button>
+  <div class="pb-timeline">
+    <div class="pb-track" id="pb-track">
+      <div class="pb-progress" id="pb-progress" style="width: 0%"></div>
+    </div>
+  </div>
+  <span class="pb-time" id="pb-time">0:00 / 0:45</span>
+  <button class="pb-speed" id="pb-speed">1×</button>
+  <span class="pb-event-log" id="pb-event-log">Ready</span>
+</div>
+
+<!-- ── Tooltip ──────────────────────────────────────────── -->
+<div class="map-tooltip" id="map-tooltip"></div>
+
+<!-- ── Node Detail Panel ───────────────────────────────── -->
+<div id="node-detail"></div>
+
+<!-- ── App Script ──────────────────────────────────────── -->
+<script type="module" src="js/app.js"></script>
+
+</body>
+</html>

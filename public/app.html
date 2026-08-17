@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="DrainGuard Mesh — Real-time urban flood prevention and drainage monitoring platform for municipal operators.">
+  <meta name="theme-color" content="#060d1a">
+  <title>DrainGuard Mesh — Municipal Flood Operations</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>🌊</text></svg>">
+</head>
+<body class="app-body">
+
+<div id="app-layout">
+
+  <!-- ── Left Sidebar Navigation ──────────────────────────── -->
+  <aside id="app-sidebar" class="app-sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">🌊</div>
+      <div class="brand-text">
+        <span class="brand-title">DrainGuard</span>
+        <span class="brand-sub">Mesh Control</span>
+      </div>
+      <button id="sidebar-toggle" class="sidebar-collapse-btn" title="Toggle Sidebar">◀</button>
+    </div>
+
+    <div class="sidebar-user-pill">
+      <div class="user-avatar" id="user-avatar-initial">OP</div>
+      <div class="user-info">
+        <div class="user-name" id="display-user-name">Operator</div>
+        <div class="user-role" id="display-user-role">Municipal Officer</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">MONITORING</div>
+      <button class="nav-item active" data-view="view-dashboard">
+        <span class="nav-icon">📊</span>
+        <span class="nav-label">Dashboard Overview</span>
+      </button>
+      <button class="nav-item" data-view="view-underground">
+        <span class="nav-icon">⬇️</span>
+        <span class="nav-label">Drainage Blueprint Map</span>
+      </button>
+      <button class="nav-item" data-view="view-city">
+        <span class="nav-icon">🏙️</span>
+        <span class="nav-label">Above-Ground City Map</span>
+      </button>
+
+      <div class="nav-section-title">OPERATIONS</div>
+      <button class="nav-item" data-view="view-alerts">
+        <span class="nav-icon">🚨</span>
+        <span class="nav-label">Alerts & Incidents</span>
+        <span class="nav-badge" id="nav-alert-badge" style="display: none;">0</span>
+      </button>
+      <button class="nav-item" data-view="view-maintenance">
+        <span class="nav-icon">🛠️</span>
+        <span class="nav-label">Maintenance Work Orders</span>
+      </button>
+      <button class="nav-item" data-view="view-hardware">
+        <span class="nav-icon">📡</span>
+        <span class="nav-label">ESP32 Hardware Console</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="system-status-indicator">
+        <span class="status-dot online"></span>
+        <span class="status-text" id="ws-status-text">Network Synced</span>
+      </div>
+      <button id="logout-btn" class="btn-logout" title="Sign Out">
+        <span>🚪</span>
+        <span class="logout-label">Sign Out</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ── Main Application Content ─────────────────────────── -->
+  <div id="main-wrapper">
+
+    <!-- ── Top Header Bar ─────────────────────────────────── -->
+    <header id="main-header">
+      <div class="header-left">
+        <button id="mobile-menu-btn" class="mobile-menu-btn">☰</button>
+        <div class="page-breadcrumb" id="page-breadcrumb">
+          <span class="bc-root">Operations</span>
+          <span class="bc-sep">/</span>
+          <span class="bc-current" id="bc-title">Dashboard Overview</span>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div id="system-risk-badge" class="risk-badge normal">
+          <span class="risk-pulse-dot"></span>
+          <span id="risk-text">SYSTEM NORMAL</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- Live System Clock -->
+        <div class="header-clock-pill">
+          <span class="clock-icon">🕒</span>
+          <span id="live-clock">--:--:--</span>
+        </div>
+
+        <!-- Audio Alert Toggle -->
+        <button id="audio-toggle" class="header-icon-btn" title="Toggle Alert Chime">🔔</button>
+
+        <!-- ⭐ PROMINENT SIMULATE FLOOD TOGGLE (TOP-RIGHT CORNER) ⭐ -->
+        <div class="flood-sim-box">
+          <div class="flood-sim-label">
+            <span class="sim-pulse-dot"></span>
+            <span>SIMULATE FLOOD</span>
+          </div>
+          <button id="flood-toggle-btn" class="flood-toggle-btn" title="Click to trigger/stop flood simulation across all connected users">
+            <span class="toggle-slider"></span>
+            <span class="toggle-text" id="flood-btn-text">OFF</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ── Views Container ────────────────────────────────── -->
+    <main id="content-container">
+
+      <!-- ── VIEW 1: DASHBOARD OVERVIEW ────────────────────── -->
+      <section id="view-dashboard" class="app-view active">
+        <!-- Top Metrics Grid -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="mc-header">
+              <span class="mc-title">ONLINE SENSORS</span>
+              <span class="mc-icon">📡</span>
+            </div>
+            <div class="mc-value green" id="dash-sensors-val">14 / 14</div>
+            <div class="mc-sub">All IoT nodes broadcasting telemetry</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="mc-header">
+              <span class="mc-title">ACTIVE INCIDENTS</span>
+              <span class="mc-icon">🚨</span>
+            </div>
+            <div class="mc-value green" id="dash-alerts-val">0</div>
+            <div class="mc-sub" id="dash-alerts-sub">Drainage nominal</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="mc-header">
+              <span class="mc-title">AVERAGE SENSOR BATTERY</span>
+              <span class="mc-icon">🔋</span>
+            </div>
+            <div class="mc-value green" id="dash-battery-val">88%</div>
+            <div class="mc-sub">LoRaWAN node power healthy</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="mc-header">
+              <span class="mc-title">NETWORK UPTIME</span>
+              <span class="mc-icon">📶</span>
+            </div>
+            <div class="mc-value blue">99.9%</div>
+            <div class="mc-sub">Municipal mesh synced via WebSocket</div>
+          </div>
+        </div>
+
+        <!-- Flood Notification Banner (Visible during flood simulation) -->
+        <div id="flood-active-banner" class="flood-banner" style="display: none;">
+          <div class="fb-icon">🚨</div>
+          <div class="fb-content">
+            <div class="fb-title">SIMULATED STORM-WATER FLOOD ACTIVE</div>
+            <div class="fb-desc" id="flood-banner-desc">Core blockage active in drainage segment between School Zone and Bus Terminal. Flow restricted.</div>
+          </div>
+          <button id="banner-stop-flood-btn" class="btn-banner-action">Stop Simulation</button>
+        </div>
+
+        <!-- Dual Mini-Preview Grid -->
+        <div class="dashboard-maps-grid">
+          <div class="dash-map-card">
+            <div class="dash-card-header">
+              <span class="dch-title">⬇️ Underground Drainage Network</span>
+              <button class="btn-expand-view" data-target="view-underground">Open Full Map ↗</button>
+            </div>
+            <div class="dash-canvas-holder" id="dash-ug-holder">
+              <canvas id="dash-ug-canvas"></canvas>
+            </div>
+          </div>
+
+          <div class="dash-map-card">
+            <div class="dash-card-header">
+              <span class="dch-title">🏙️ Above-Ground City Surface</span>
+              <button class="btn-expand-view" data-target="view-city">Open Full Map ↗</button>
+            </div>
+            <div class="dash-canvas-holder" id="dash-ag-holder">
+              <canvas id="dash-ag-canvas"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── VIEW 2: DEDICATED UNDERGROUND DRAINAGE MAP ─────── -->
+      <section id="view-underground" class="app-view">
+        <div class="full-map-wrapper">
+          <div class="map-overlay-title">
+            <div class="mot-main">UNDERGROUND DRAINAGE BLUEPRINT</div>
+            <div class="mot-sub">Interactive Pipe Flow Network • Real-Time Fluid Stream Particle Rendering</div>
+          </div>
+
+          <div class="map-floating-controls">
+            <button class="map-tool-btn" id="ug-full-zoom-in" title="Zoom In">+</button>
+            <button class="map-tool-btn" id="ug-full-zoom-out" title="Zoom Out">−</button>
+            <button class="map-tool-btn" id="ug-full-reset" title="Reset Camera">⟳</button>
+          </div>
+
+          <div class="canvas-full-container">
+            <canvas id="underground-full-canvas"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── VIEW 3: DEDICATED ABOVE-GROUND CITY MAP ────────── -->
+      <section id="view-city" class="app-view">
+        <div class="full-map-wrapper">
+          <div class="map-overlay-title">
+            <div class="mot-main">ABOVE-GROUND CITY TOP-DOWN MAP</div>
+            <div class="mot-sub">School Zone 🏫 • Bus Terminal 🚌 • Road Manholes • Surface Hazard Radii</div>
+          </div>
+
+          <div class="map-floating-controls">
+            <button class="map-tool-btn" id="ag-full-zoom-in" title="Zoom In">+</button>
+            <button class="map-tool-btn" id="ag-full-zoom-out" title="Zoom Out">−</button>
+            <button class="map-tool-btn" id="ag-full-reset" title="Reset Camera">⟳</button>
+          </div>
+
+          <div class="canvas-full-container">
+            <canvas id="aboveground-full-canvas"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── VIEW 4: ALERTS & INCIDENTS ────────────────────── -->
+      <section id="view-alerts" class="app-view">
+        <div class="panel-page-layout">
+          <div class="panel-page-header">
+            <div>
+              <h2>🚨 Real-Time Drainage Alerts & Incidents</h2>
+              <p class="panel-subtitle">Multi-node correlation anomaly log with automatic escalation</p>
+            </div>
+            <div class="panel-header-actions">
+              <button id="refresh-alerts-btn" class="btn-secondary">🔄 Refresh Log</button>
+            </div>
+          </div>
+
+          <div class="alerts-feed-container" id="alerts-full-feed">
+            <div class="empty-state">
+              <div class="es-icon">✅</div>
+              <div class="es-title">All Systems Operating Normally</div>
+              <div class="es-desc">No drainage anomalies or water backups detected across the network.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── VIEW 5: MAINTENANCE WORK ORDERS ───────────────── -->
+      <section id="view-maintenance" class="app-view">
+        <div class="panel-page-layout">
+          <div class="panel-page-header">
+            <div>
+              <h2>🛠️ Maintenance Work Orders</h2>
+              <p class="panel-subtitle">Emergency field dispatch, manhole access clearance, and flow recovery verification</p>
+            </div>
+            <div class="panel-header-actions">
+              <button id="create-manual-wo-btn" class="btn-primary">➕ Create Work Order</button>
+            </div>
+          </div>
+
+          <div class="work-orders-grid" id="work-orders-grid">
+            <div class="empty-state">
+              <div class="es-icon">🔧</div>
+              <div class="es-title">No Active Work Orders</div>
+              <div class="es-desc">All drainage segments are clear and operating within normal parameters.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── VIEW 6: HARDWARE IoT CONSOLE & TESTER ──────────── -->
+      <section id="view-hardware" class="app-view">
+        <div class="panel-page-layout">
+          <div class="panel-page-header">
+            <div>
+              <h2>📡 ESP32 & IoT Sensor Hardware Console</h2>
+              <p class="panel-subtitle">Connect physical ESP32 microcontrollers or test live telemetry ingestion via REST API</p>
+            </div>
+          </div>
+
+          <div class="hardware-grid">
+            <!-- Hardware Connection Docs & Endpoint -->
+            <div class="hw-card">
+              <div class="hw-card-title">🔌 Microcontroller Connection Guide (ESP32 / Arduino / LoRa)</div>
+              <p class="hw-text">Send HTTP POST requests directly from your ESP32 microcontrollers inside drainage pipes to this server endpoint:</p>
+              <div class="code-box">
+                <code>POST http://localhost:3000/api/sensors/data<br>Content-Type: application/json<br><br>{<br>&nbsp;&nbsp;"sensor_id": "S-06",<br>&nbsp;&nbsp;"flow_rate": 0.02,<br>&nbsp;&nbsp;"water_level": 0.95,<br>&nbsp;&nbsp;"velocity": 0.1,<br>&nbsp;&nbsp;"status": "blocked"<br>}</code>
+              </div>
+              <div class="hw-tip">
+                💡 <strong>Hardware Automation:</strong> If an ESP32 sensor detects a blockage (e.g. flow &lt; 0.1 m³/s or water &gt; 85%), the server automatically triggers the Flood Simulation across all connected municipal operators! Once cleared, it automatically recovers.
+              </div>
+            </div>
+
+            <!-- Interactive Hardware Simulator -->
+            <div class="hw-card">
+              <div class="hw-card-title">🧪 Live Hardware Telemetry Simulator</div>
+              <p class="hw-text">Simulate sending a physical sensor reading to verify hardware API response:</p>
+
+              <form id="hw-sim-form" class="hw-form">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Target Sensor</label>
+                    <select id="hw-sim-sensor" class="auth-select">
+                      <option value="S-06">S-06 (School ↔ Bus Terminal)</option>
+                      <option value="S-13">S-13 (School Zone Main)</option>
+                      <option value="S-07">S-07 (Bus Terminal West)</option>
+                      <option value="S-09">S-09 (3rd Avenue)</option>
+                      <option value="S-01">S-01 (1st Avenue West)</option>
+                      <option value="S-12">S-12 (4th Avenue Central)</option>
+                    </select>
+                  </div>
+
+                  <div class="form-group">
+                    <label>Flow Status</label>
+                    <select id="hw-sim-status" class="auth-select">
+                      <option value="low_flow">⚠️ Low Water Flow / Partial Restriction (Turns Orange 1st)</option>
+                      <option value="blocked">🚨 Complete Blockage (Turns Red, Spreads Orange to Red)</option>
+                      <option value="normal">✅ Normal Flow (Restores to Blue Slowly)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Flow Rate (m³/s)</label>
+                    <input type="number" id="hw-sim-flow" value="0.35" step="0.01" class="auth-input">
+                  </div>
+                  <div class="form-group">
+                    <label>Water Level (0.0 - 1.0)</label>
+                    <input type="number" id="hw-sim-water" value="0.62" step="0.01" class="auth-input">
+                  </div>
+                </div>
+
+                <button type="submit" id="hw-send-btn" class="btn-primary">
+                  <span>Transmit Telemetry to Server</span>
+                  <span>📡</span>
+                </button>
+              </form>
+
+              <div id="hw-response-log" class="hw-response-box" style="display: none;"></div>
+            </div>
+          </div>
+
+          <!-- Live Sensor Telemetry Table -->
+          <div class="table-card" style="margin-top: 16px;">
+            <div class="tc-title">📊 Live Sensor Telemetry Matrix (All 14 Nodes)</div>
+            <div class="table-responsive">
+              <table class="telemetry-table">
+                <thead>
+                  <tr>
+                    <th>Sensor ID</th>
+                    <th>Surface Location</th>
+                    <th>Flow Rate</th>
+                    <th>Water Level</th>
+                    <th>Velocity</th>
+                    <th>Battery</th>
+                    <th>Status</th>
+                    <th>Last Update</th>
+                  </tr>
+                </thead>
+                <tbody id="telemetry-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+</div>
+
+<!-- ── Hover Tooltip ──────────────────────────────────────── -->
+<div class="map-tooltip" id="map-tooltip"></div>
+
+<!-- ── Node Detail Popup ──────────────────────────────────── -->
+<div id="node-detail"></div>
+
+<!-- ── Main App Logic ─────────────────────────────────────── -->
+<script type="module" src="js/app.js"></script>
+
+</body>
+</html>

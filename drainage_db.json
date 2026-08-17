@@ -1,0 +1,132 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "operator",
+      "email": "operator@drainguard.gov",
+      "password_hash": "$2a$10$mqzLBZxWvZ/SEOtDX2apQOEDxCWnMOFedZd67V5ys1dSqQR.77qbW",
+      "full_name": "Municipal Control Operator",
+      "role": "admin",
+      "created_at": "2026-08-15T13:04:53.524Z"
+    },
+    {
+      "id": 2,
+      "username": "operator@safetynet.io",
+      "email": "operator@safetynet.io",
+      "password_hash": "$2a$10$rHw/8HhJb.VP/Icjd..CCeqYs/357DkoPjdh2uP6hJNcXoTBfGufC",
+      "full_name": "xcvb",
+      "role": "operator",
+      "created_at": "2026-08-15T13:44:25.852Z"
+    }
+  ],
+  "sensor_telemetry": [
+    {
+      "id": 1,
+      "sensor_id": "S-06",
+      "flow_rate": 0.35,
+      "water_level": 0.62,
+      "velocity": 1.2,
+      "battery_level": 90,
+      "status": "low_flow",
+      "source": "hardware_simulator",
+      "timestamp": "2026-08-17T04:47:29.016Z"
+    }
+  ],
+  "flood_events": [
+    {
+      "id": 1,
+      "status": "resolved",
+      "triggered_by": "manual_button",
+      "sensor_id": "S-06",
+      "started_at": "2026-08-15T13:44:39.112Z",
+      "ended_at": "2026-08-15T13:44:44.108Z"
+    },
+    {
+      "id": 2,
+      "status": "resolved",
+      "triggered_by": "manual_button",
+      "sensor_id": "S-06",
+      "started_at": "2026-08-15T13:49:49.564Z",
+      "ended_at": "2026-08-15T13:50:23.801Z"
+    },
+    {
+      "id": 3,
+      "status": "resolved",
+      "triggered_by": "manual_button",
+      "sensor_id": "S-06",
+      "started_at": "2026-08-16T09:27:11.987Z",
+      "ended_at": "2026-08-16T09:27:34.911Z"
+    },
+    {
+      "id": 4,
+      "status": "resolved",
+      "triggered_by": "manual_button",
+      "sensor_id": "S-06",
+      "started_at": "2026-08-17T04:45:47.420Z",
+      "ended_at": "2026-08-17T04:46:16.221Z"
+    }
+  ],
+  "alerts": [
+    {
+      "id": "WARN-1786942049018",
+      "severity": "warning",
+      "pipe_id": "P12",
+      "segment_label": "2nd Ave (School ↔ Bus Stand)",
+      "location": "2nd Avenue Central & School Access Rd",
+      "message": "Low water flow detected by hardware sensor. Water flow slowing on segment P12 (Orange).",
+      "confidence": 85,
+      "resolved": 0,
+      "created_at": "2026-08-17T04:47:29.018Z",
+      "resolved_at": null
+    },
+    {
+      "id": "ALR-1786941947423",
+      "severity": "critical",
+      "pipe_id": "P12",
+      "segment_label": "2nd Ave (School ↔ Bus Stand)",
+      "location": "2nd Avenue Central & School Access Rd",
+      "message": "Storm-water backup developing between School Zone and Bus Stand. Flow restriction on segment P12.",
+      "confidence": 96,
+      "resolved": 1,
+      "created_at": "2026-08-17T04:45:47.423Z",
+      "resolved_at": "2026-08-17T04:46:16.223Z"
+    },
+    {
+      "id": "ALR-1786872431991",
+      "severity": "critical",
+      "pipe_id": "P12",
+      "segment_label": "2nd Ave (School ↔ Bus Stand)",
+      "location": "2nd Avenue Central & School Access Rd",
+      "message": "Storm-water blockage detected between School Zone and Bus Stand. Flow halted on segment P12.",
+      "confidence": 96,
+      "resolved": 1,
+      "created_at": "2026-08-16T09:27:11.991Z",
+      "resolved_at": "2026-08-16T09:27:34.917Z"
+    },
+    {
+      "id": "ALR-1786801789568",
+      "severity": "critical",
+      "pipe_id": "P12",
+      "segment_label": "2nd Ave (School ↔ Bus Stand)",
+      "location": "2nd Avenue Central & School Access Rd",
+      "message": "Storm-water blockage detected between School Zone and Bus Stand. Flow halted on segment P12.",
+      "confidence": 96,
+      "resolved": 1,
+      "created_at": "2026-08-15T13:49:49.568Z",
+      "resolved_at": "2026-08-15T13:50:23.804Z"
+    },
+    {
+      "id": "ALR-1786801479115",
+      "severity": "critical",
+      "pipe_id": "P12",
+      "segment_label": "2nd Ave (School ↔ Bus Stand)",
+      "location": "2nd Avenue Central & School Access Rd",
+      "message": "Storm-water blockage detected between School Zone and Bus Stand. Flow halted on segment P12.",
+      "confidence": 96,
+      "resolved": 1,
+      "created_at": "2026-08-15T13:44:39.115Z",
+      "resolved_at": "2026-08-15T13:44:44.113Z"
+    }
+  ],
+  "work_orders": []
+}

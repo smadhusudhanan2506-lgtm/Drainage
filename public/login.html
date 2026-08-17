@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="DrainGuard Mesh — Municipal Flood Prevention & Drainage Monitoring Login">
+  <meta name="theme-color" content="#060d1a">
+  <title>Login — DrainGuard Mesh Municipal Control</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>🌊</text></svg>">
+</head>
+<body class="auth-body">
+
+<div class="auth-bg-ambient">
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+  <div class="glow-orb orb-3"></div>
+</div>
+
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="auth-logo">
+        <div class="logo-icon pulse-soft">🌊</div>
+      </div>
+      <h2>DrainGuard<span class="text-accent"> Mesh</span></h2>
+      <p class="auth-subtitle">Urban Flood Prevention & Municipal Drainage Operations</p>
+    </div>
+
+    <div id="auth-alert" class="auth-alert" style="display: none;"></div>
+
+    <form id="login-form" class="auth-form">
+      <div class="form-group">
+        <label for="username">Operator Username or Email</label>
+        <div class="input-wrap">
+          <span class="input-icon">👤</span>
+          <input type="text" id="username" name="username" placeholder="e.g. operator" required autocomplete="username">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="label-row">
+          <label for="password">Security Password</label>
+        </div>
+        <div class="input-wrap">
+          <span class="input-icon">🔒</span>
+          <input type="password" id="password" name="password" placeholder="••••••••••••" required autocomplete="current-password">
+        </div>
+      </div>
+
+      <div class="form-options">
+        <label class="checkbox-label">
+          <input type="checkbox" id="remember" checked>
+          <span>Keep session active</span>
+        </label>
+      </div>
+
+      <button type="submit" id="submit-btn" class="btn-primary auth-submit">
+        <span>Enter Command Center</span>
+        <span class="btn-arrow">→</span>
+      </button>
+    </form>
+
+    <div class="demo-credentials-box">
+      <div class="demo-title">⚡ Quick Demo Operator Login</div>
+      <div class="demo-creds">
+        <span>Username: <strong>operator</strong></span>
+        <span>Password: <strong>operator123</strong></span>
+      </div>
+      <button type="button" id="autofill-btn" class="btn-demo-autofill">Auto-fill Credentials</button>
+    </div>
+
+    <div class="auth-footer">
+      <span>Need operator clearance? </span>
+      <a href="register.html" class="auth-link">Register New Account</a>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { login, checkAlreadyLoggedIn } from './js/auth.js';
+
+  // If already logged in, redirect to app
+  if (checkAlreadyLoggedIn()) {
+    window.location.href = 'app.html';
+  }
+
+  const form = document.getElementById('login-form');
+  const alertEl = document.getElementById('auth-alert');
+  const submitBtn = document.getElementById('submit-btn');
+  const autofillBtn = document.getElementById('autofill-btn');
+
+  autofillBtn.addEventListener('click', () => {
+    document.getElementById('username').value = 'operator';
+    document.getElementById('password').value = 'operator123';
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span>Verifying credentials...</span>';
+    alertEl.style.display = 'none';
+
+    try {
+      const res = await login(username, password);
+      if (res.token) {
+        alertEl.className = 'auth-alert success';
+        alertEl.textContent = 'Authorization granted. Loading Command Center...';
+        alertEl.style.display = 'block';
+        setTimeout(() => {
+          window.location.href = 'app.html';
+        }, 600);
+      }
+    } catch (err) {
+      alertEl.className = 'auth-alert error';
+      alertEl.textContent = err.message || 'Login failed. Please check your credentials.';
+      alertEl.style.display = 'block';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>Enter Command Center</span><span class="btn-arrow">→</span>';
+    }
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="DrainGuard Mesh — Register Municipal Operator Account">
+  <meta name="theme-color" content="#060d1a">
+  <title>Register — DrainGuard Mesh Municipal Control</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>🌊</text></svg>">
+</head>
+<body class="auth-body">
+
+<div class="auth-bg-ambient">
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+  <div class="glow-orb orb-3"></div>
+</div>
+
+<div class="auth-container">
+  <div class="auth-card register-card">
+    <div class="auth-header">
+      <div class="auth-logo">
+        <div class="logo-icon pulse-soft">🌊</div>
+      </div>
+      <h2>Operator<span class="text-accent"> Registration</span></h2>
+      <p class="auth-subtitle">Join the Municipal Flood Prevention & IoT Telemetry Network</p>
+    </div>
+
+    <div id="auth-alert" class="auth-alert" style="display: none;"></div>
+
+    <form id="register-form" class="auth-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="fullName">Full Name</label>
+          <div class="input-wrap">
+            <span class="input-icon">👤</span>
+            <input type="text" id="fullName" name="fullName" placeholder="e.g. Alex Morgan" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="username">Username</label>
+          <div class="input-wrap">
+            <span class="input-icon">🏷️</span>
+            <input type="text" id="username" name="username" placeholder="e.g. amorgan" required autocomplete="username">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Municipal Email Address</label>
+        <div class="input-wrap">
+          <span class="input-icon">✉️</span>
+          <input type="email" id="email" name="email" placeholder="alex.morgan@citywater.gov" required autocomplete="email">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="role">Department Role</label>
+        <div class="input-wrap">
+          <span class="input-icon">🛡️</span>
+          <select id="role" name="role" class="auth-select">
+            <option value="operator">Control Room Operator</option>
+            <option value="dispatcher">Emergency Response Dispatcher</option>
+            <option value="engineer">Field Drainage Engineer</option>
+            <option value="admin">System Administrator</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input type="password" id="password" name="password" placeholder="••••••••••••" required minlength="6">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword">Confirm Password</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input type="password" id="confirmPassword" name="confirmPassword" placeholder="••••••••••••" required minlength="6">
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" id="submit-btn" class="btn-primary auth-submit">
+        <span>Create Operator Account</span>
+        <span class="btn-arrow">→</span>
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      <span>Already have an authorized account? </span>
+      <a href="login.html" class="auth-link">Sign In</a>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { register } from './js/auth.js';
+
+  const form = document.getElementById('register-form');
+  const alertEl = document.getElementById('auth-alert');
+  const submitBtn = document.getElementById('submit-btn');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fullName = document.getElementById('fullName').value.trim();
+    const username = document.getElementById('username').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const role = document.getElementById('role').value;
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    if (password !== confirmPassword) {
+      alertEl.className = 'auth-alert error';
+      alertEl.textContent = 'Passwords do not match. Please re-enter.';
+      alertEl.style.display = 'block';
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span>Creating account...</span>';
+    alertEl.style.display = 'none';
+
+    try {
+      const res = await register({ fullName, username, email, role, password });
+      if (res.token) {
+        alertEl.className = 'auth-alert success';
+        alertEl.textContent = 'Account registered successfully! Redirecting to Command Center...';
+        alertEl.style.display = 'block';
+        setTimeout(() => {
+          window.location.href = 'app.html';
+        }, 800);
+      }
+    } catch (err) {
+      alertEl.className = 'auth-alert error';
+      alertEl.textContent = err.message || 'Registration failed. Please check your information.';
+      alertEl.style.display = 'block';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>Create Operator Account</span><span class="btn-arrow">→</span>';
+    }
+  });
+</script>
+
+</body>
+</html>
