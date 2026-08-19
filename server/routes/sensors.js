@@ -1,6 +1,7 @@
 import express from 'express';
 import { db } from '../db.js';
 import { broadcast, floodState, setLowFlowWarning, activateFloodSimulation, deactivateFloodSimulation } from '../websocket.js';
+import { syncTelemetryToSupabase } from '../supabase.js';
 
 const router = express.Router();
 
@@ -47,6 +48,9 @@ router.post('/data', (req, res) => {
       status: computedStatus,
       source: source || 'esp32_hardware'
     });
+
+    // Cloud sync to Supabase (if configured)
+    syncTelemetryToSupabase(reading).catch(console.error);
 
     // Broadcast live telemetry to all connected apps
     broadcast('SENSOR_TELEMETRY', reading);

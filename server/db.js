@@ -9,6 +9,7 @@ const dbFilePath = path.join(__dirname, '..', 'drainage_db.json');
 // Default initial state
 const defaultData = {
   users: [],
+  login_logs: [],
   sensor_telemetry: [],
   flood_events: [],
   alerts: [],
@@ -64,18 +65,56 @@ export const db = {
     },
     insert(user) {
       const id = data.users.length ? Math.max(...data.users.map(u => u.id)) + 1 : 1;
-      const newUser = { id, ...user, created_at: new Date().toISOString() };
+      const newUser = {
+        id,
+        ...user,
+        created_at: new Date().toISOString(),
+        last_login_at: null
+      };
       data.users.push(newUser);
       saveDB();
       return newUser;
+    },
+    updateLastLogin(id) {
+      const u = data.users.find(user => user.id === id);
+      if (u) {
+        u.last_login_at = new Date().toISOString();
+        saveDB();
+      }
+      return u;
+    },
+    getAll() {
+      // Returns safe user list (without password hashes)
+      return data.users.map(({ password_hash, ...u }) => u);
     }
   },
+
+  loginLogs: {
+    insert(log) {
+      const id = data.login_logs.length ? data.login_logs[data.login_logs.length - 1].id + 1 : 1;
+      const record = {
+        id,
+        ...log,
+        timestamp: new Date().toISOString()
+      };
+      data.login_logs.unshift(record);
+      // Keep last 500 login audit records
+      if (data.login_logs.length > 500) {
+        data.login_logs.pop();
+      }
+      saveDB();
+      return record;
+    },
+    getAll(limit = 100) {
+      return data.login_logs.slice(0, limit);
+    }
+  },
+
   sensorTelemetry: {
     insert(reading) {
       const id = data.sensor_telemetry.length ? data.sensor_telemetry[data.sensor_telemetry.length - 1].id + 1 : 1;
       const record = { id, ...reading, timestamp: new Date().toISOString() };
       data.sensor_telemetry.push(record);
-      // Keep last 1000 records
       if (data.sensor_telemetry.length > 1000) {
         data.sensor_telemetry.shift();
       }
@@ -93,6 +132,7 @@ export const db = {
       return [...data.sensor_telemetry].reverse().slice(0, limit);
     }
   },
+
   floodEvents: {
     insert(event) {
       const id = data.flood_events.length ? data.flood_events[data.flood_events.length - 1].id + 1 : 1;
@@ -116,6 +156,7 @@ export const db = {
       return [...data.flood_events].reverse().slice(0, limit);
     }
   },
+
   alerts: {
     insert(alert) {
       const record = { ...alert, resolved: 0, created_at: new Date().toISOString(), resolved_at: null };
@@ -137,6 +178,7 @@ export const db = {
       return data.alerts.slice(0, limit);
     }
   },
+
   workOrders: {
     insert(wo) {
       const record = { ...wo, created_at: new Date().toISOString(), completed_at: null, verified_at: null };

@@ -437,9 +437,60 @@ class DrainGuardApp {
       } catch (e) { console.error(e); }
     });
 
-    // Auto-load alerts & work orders initially
+    document.getElementById('refresh-users-btn')?.addEventListener('click', () => {
+      this._loadUsersAndLogs();
+    });
+
+    // Auto-load alerts, work orders, and user database logs initially
     this._loadAlertsFeed();
     this._loadWorkOrders();
+    this._loadUsersAndLogs();
+  }
+
+  async _loadUsersAndLogs() {
+    const usersTbody = document.getElementById('users-table-body');
+    const logsTbody = document.getElementById('login-logs-table-body');
+
+    try {
+      // 1. Fetch Registered Users from Database
+      const usersRes = await fetch('/api/auth/users');
+      const usersData = await usersRes.json();
+      if (usersTbody && usersData.users) {
+        usersTbody.innerHTML = usersData.users.map(u => `
+          <tr>
+            <td><strong style="color:var(--clr-text-accent)">#${u.id}</strong></td>
+            <td><strong>${u.username}</strong></td>
+            <td style="color:var(--clr-text-dim)">${u.full_name || u.username}</td>
+            <td style="color:var(--clr-text-dim)">${u.email}</td>
+            <td><span class="wo-status assigned">${(u.role || 'operator').toUpperCase()}</span></td>
+            <td style="color:var(--clr-text-dim)">${formatTime(u.created_at)}</td>
+            <td style="color:${u.last_login_at ? 'var(--clr-green)' : 'var(--clr-text-dim)'}">${u.last_login_at ? formatTime(u.last_login_at) : 'Never'}</td>
+          </tr>
+        `).join('');
+      }
+
+      // 2. Fetch Login & Registration Audit Logs from Database
+      const logsRes = await fetch('/api/auth/logs');
+      const logsData = await logsRes.json();
+      if (logsTbody && logsData.logs) {
+        logsTbody.innerHTML = logsData.logs.map(log => {
+          const isSuccess = log.status.includes('SUCCESS') || log.status.includes('SEED');
+          return `
+            <tr>
+              <td><strong style="color:var(--clr-text-accent)">LOG-${log.id}</strong></td>
+              <td><strong>${log.username || 'Anonymous'}</strong></td>
+              <td><span class="status-dot ${isSuccess ? 'online' : 'offline'}"></span> <span style="color:${isSuccess ? 'var(--clr-green)' : 'var(--clr-red)'}">${log.status}</span></td>
+              <td style="color:var(--clr-text-dim)">${(log.role || 'operator').toUpperCase()}</td>
+              <td style="font-family:var(--font-mono)">${log.ip_address || '127.0.0.1'}</td>
+              <td style="color:var(--clr-text-dim);font-size:11px">${(log.user_agent || '').substring(0, 45)}...</td>
+              <td style="color:var(--clr-text-dim)">${formatTime(log.timestamp)}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+    } catch (e) {
+      console.error('Error loading database users/logs:', e);
+    }
   }
 
   async _loadAlertsFeed() {

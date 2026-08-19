@@ -61,6 +61,10 @@
         <span class="nav-icon">📡</span>
         <span class="nav-label">ESP32 Hardware Console</span>
       </button>
+      <button class="nav-item" data-view="view-users">
+        <span class="nav-icon">👥</span>
+        <span class="nav-label">User Accounts & Auth Logs</span>
+      </button>
     </nav>
 
     <div class="sidebar-footer">
@@ -375,6 +379,63 @@
                   </tr>
                 </thead>
                 <tbody id="telemetry-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── VIEW 7: USER ACCOUNTS & DATABASE AUTH LOGS ────── -->
+      <section id="view-users" class="app-view">
+        <div class="panel-page-layout">
+          <div class="panel-page-header">
+            <div>
+              <h2>👥 Database User Registry & Login Audit Logs</h2>
+              <p class="panel-subtitle">All municipal operator accounts, registrations, and login session records stored in the database</p>
+            </div>
+            <div class="panel-header-actions">
+              <button id="refresh-users-btn" class="btn-secondary">🔄 Refresh Database Logs</button>
+            </div>
+          </div>
+
+          <!-- Registered Accounts Table -->
+          <div class="table-card">
+            <div class="tc-title">🗄️ Registered Operator Accounts (Stored in Database)</div>
+            <div class="table-responsive">
+              <table class="telemetry-table">
+                <thead>
+                  <tr>
+                    <th>User ID</th>
+                    <th>Username</th>
+                    <th>Full Name</th>
+                    <th>Email Address</th>
+                    <th>Department Role</th>
+                    <th>Registered At</th>
+                    <th>Last Login</th>
+                  </tr>
+                </thead>
+                <tbody id="users-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Login & Registration Audit Log Table -->
+          <div class="table-card">
+            <div class="tc-title">📋 Live Login & Registration Audit Trail (Stored in Database)</div>
+            <div class="table-responsive">
+              <table class="telemetry-table">
+                <thead>
+                  <tr>
+                    <th>Log ID</th>
+                    <th>Username / Identity</th>
+                    <th>Auth Event Status</th>
+                    <th>Role</th>
+                    <th>IP Address</th>
+                    <th>Browser / User Agent</th>
+                    <th>Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody id="login-logs-table-body"></tbody>
               </table>
             </div>
           </div>

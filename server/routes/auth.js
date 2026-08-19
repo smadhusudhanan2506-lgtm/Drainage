@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { db } from '../db.js';
+import { syncUserToSupabase, syncLoginLogToSupabase } from '../supabase.js';
 
 const router = express.Router();
 export const JWT_SECRET = 'drainguard_mesh_secure_token_secret_2026';
@@ -28,13 +29,24 @@ export function seedDefaultUser() {
     const user = db.users.find(u => u.username === 'operator');
     if (!user) {
       const hash = bcrypt.hashSync('operator123', 10);
-      db.users.insert({
+      const op = db.users.insert({
         username: 'operator',
         email: 'operator@drainguard.gov',
         password_hash: hash,
         full_name: 'Municipal Control Operator',
         role: 'admin'
       });
+
+      db.loginLogs.insert({
+        user_id: op.id,
+        username: 'operator',
+        email: 'operator@drainguard.gov',
+        role: 'admin',
+        status: 'INITIAL_SEED',
+        ip_address: '127.0.0.1',
+        user_agent: 'System Initializer'
+      });
+
       console.log('👤 Default operator created: username="operator", password="operator123"');
     }
   } catch (err) {
@@ -44,6 +56,9 @@ export function seedDefaultUser() {
 
 // Register
 router.post('/register', async (req, res) => {
+  const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
+  const userAgent = req.headers['user-agent'] || 'Unknown Browser';
+
   try {
     const { username, email, password, fullName, role } = req.body;
 
@@ -57,6 +72,15 @@ router.post('/register', async (req, res) => {
     // Check duplicate
     const existing = db.users.find(u => u.username.toLowerCase() === cleanUsername.toLowerCase() || u.email.toLowerCase() === cleanEmail);
     if (existing) {
+      db.loginLogs.insert({
+        user_id: null,
+        username: cleanUsername,
+        email: cleanEmail,
+        role: role || 'operator',
+        status: 'FAILED_REGISTRATION_DUPLICATE',
+        ip_address: clientIp,
+        user_agent: userAgent
+      });
       return res.status(409).json({ error: 'Username or email is already registered.' });
     }
 
@@ -69,6 +93,21 @@ router.post('/register', async (req, res) => {
       role: role || 'operator'
     });
 
+    // Log registration in audit log
+    const regLog = db.loginLogs.insert({
+      user_id: newUser.id,
+      username: newUser.username,
+      email: newUser.email,
+      role: newUser.role,
+      status: 'REGISTRATION_SUCCESS',
+      ip_address: clientIp,
+      user_agent: userAgent
+    });
+
+    // Cloud sync to Supabase (if configured)
+    syncUserToSupabase(newUser).catch(console.error);
+    syncLoginLogToSupabase(regLog).catch(console.error);
+
     const token = jwt.sign(
       { id: newUser.id, username: newUser.username, email: newUser.email, role: newUser.role },
       JWT_SECRET,
@@ -76,7 +115,7 @@ router.post('/register', async (req, res) => {
     );
 
     res.status(201).json({
-      message: 'Account created successfully.',
+      message: 'Account registered and saved in database.',
       token,
       user: { id: newUser.id, username: newUser.username, email: newUser.email, fullName: newUser.full_name, role: newUser.role }
     });
@@ -88,6 +127,9 @@ router.post('/register', async (req, res) => {
 
 // Login
 router.post('/login', async (req, res) => {
+  const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
+  const userAgent = req.headers['user-agent'] || 'Unknown Browser';
+
   try {
     const { username, password } = req.body;
 
@@ -97,14 +139,52 @@ router.post('/login', async (req, res) => {
 
     const cleanUser = username.trim().toLowerCase();
     const user = db.users.find(u => u.username.toLowerCase() === cleanUser || u.email.toLowerCase() === cleanUser);
+
     if (!user) {
+      // Log failed login attempt
+      const failLog = db.loginLogs.insert({
+        user_id: null,
+        username: cleanUser,
+        email: null,
+        role: 'unknown',
+        status: 'FAILED_USER_NOT_FOUND',
+        ip_address: clientIp,
+        user_agent: userAgent
+      });
+      syncLoginLogToSupabase(failLog).catch(console.error);
       return res.status(401).json({ error: 'Invalid username or password.' });
     }
 
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) {
+      // Log failed password attempt
+      const failLog = db.loginLogs.insert({
+        user_id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        status: 'FAILED_INVALID_PASSWORD',
+        ip_address: clientIp,
+        user_agent: userAgent
+      });
+      syncLoginLogToSupabase(failLog).catch(console.error);
       return res.status(401).json({ error: 'Invalid username or password.' });
     }
+
+    // Update last login timestamp in user record
+    db.users.updateLastLogin(user.id);
+
+    // Record successful login audit trail in database
+    const successLog = db.loginLogs.insert({
+      user_id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      status: 'LOGIN_SUCCESS',
+      ip_address: clientIp,
+      user_agent: userAgent
+    });
+    syncLoginLogToSupabase(successLog).catch(console.error);
 
     const token = jwt.sign(
       { id: user.id, username: user.username, email: user.email, role: user.role },
@@ -113,7 +193,7 @@ router.post('/login', async (req, res) => {
     );
 
     res.json({
-      message: 'Login successful.',
+      message: 'Login successful. Session logged to database.',
       token,
       user: {
         id: user.id,
@@ -135,6 +215,27 @@ router.get('/me', authenticateToken, (req, res) => {
   if (!user) return res.status(404).json({ error: 'User not found.' });
   const { password_hash, ...safeUser } = user;
   res.json({ user: safeUser });
+});
+
+// Get all registered accounts stored in database
+router.get('/users', (req, res) => {
+  try {
+    const users = db.users.getAll();
+    res.json({ users });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve registered users.' });
+  }
+});
+
+// Get all login and registration activity logs stored in database
+router.get('/logs', (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 100;
+    const logs = db.loginLogs.getAll(limit);
+    res.json({ logs });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve login audit logs.' });
+  }
 });
 
 export default router;
