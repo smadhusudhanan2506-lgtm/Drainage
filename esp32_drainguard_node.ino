@@ -1,23 +1,20 @@
 /* ─────────────────────────────────────────────────────────────
- *  DrainGuard Mesh — Production ESP32 IoT Node Firmware
+ *  DrainGuard Mesh — Production ESP32 IoT Node Firmware (HTTPS)
+ *  Live Cloud Server: https://drainguard-mesh.onrender.com
  *  Pins: D27 (YF-S201 Flow Sensor) | D26 (12V Relay Module)
  *  Baud Rate: 115200
  * ───────────────────────────────────────────────────────────── */
 
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 
-// ── 1. Wi-Fi Settings ─────────────────────────────────────────
+// ── 1. Your Wi-Fi Settings ────────────────────────────────────
 const char* ssid     = "Tomioka";
 const char* password = "0987654321";
 
-// ── 2. DrainGuard Mesh Server Endpoint ────────────────────────
-// Local Wi-Fi endpoint:
-const char* serverUrl = "http://10.35.172.182:3000/api/sensors/data";
-
-// (When deployed on Render, replace with your live URL):
-// const char* serverUrl = "https://your-app.onrender.com/api/sensors/data";
-
+// ── 2. Live Render Cloud Server Endpoint ──────────────────────
+const char* serverUrl = "https://drainguard-mesh.onrender.com/api/sensors/data";
 const char* SENSOR_ID = "S-06"; // Drainage node between School & Bus Terminal
 
 // ── 3. Pin Assignments ────────────────────────────────────────
@@ -32,7 +29,7 @@ unsigned long lastPulseTime = 0;
 // Interrupt Service Routine for Flow Sensor
 void IRAM_ATTR countPulse() {
   unsigned long now = micros();
-  // Basic debounce filter (pulses should not be faster than 1000us)
+  // Basic debounce filter
   if (now - lastPulseTime > 1000) {
     pulseCount++;
     lastPulseTime = now;
@@ -46,7 +43,7 @@ void setup() {
 
   Serial.println();
   Serial.println("==================================================");
-  Serial.println("🌊 DrainGuard Mesh — ESP32 Sensor Node Online");
+  Serial.println("🌊 DrainGuard Mesh — Live Cloud ESP32 Node Online");
   Serial.println("==================================================");
   Serial.printf("📌 Flow Sensor Pin: GPIO %d (D27)\n", FLOW_PIN);
   Serial.printf("📌 Relay Control Pin: GPIO %d (D26)\n", RELAY_PIN);
@@ -67,7 +64,7 @@ void setup() {
   WiFi.begin(ssid, password);
 
   int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 30) {
+  while (WiFi.status() != WL_CONNECTED && attempts < 35) {
     delay(500);
     Serial.print(".");
     attempts++;
@@ -77,7 +74,7 @@ void setup() {
     Serial.println("\n✅ Wi-Fi Connected Successfully!");
     Serial.print("🌐 ESP32 IP Address: ");
     Serial.println(WiFi.localIP());
-    Serial.print("🎯 Target Server Endpoint: ");
+    Serial.print("☁️ Live Cloud Server: ");
     Serial.println(serverUrl);
     Serial.println("==================================================\n");
   } else {
@@ -94,7 +91,6 @@ void loop() {
 
     // ── Flow Calculation ──────────────────────────────────────
     // YF-S201 Formula: Frequency (Hz) = 7.5 * Q (Q = Flow rate in L/min)
-    // Frequency = pulses / (interval_in_seconds)
     noInterrupts();
     unsigned long currentPulses = pulseCount;
     pulseCount = 0;
@@ -114,7 +110,7 @@ void loop() {
     if (flowLitersMin <= 0.2) {
       status = "blocked";
       waterLevel = 0.95;
-      digitalWrite(RELAY_PIN, LOW); // Trigger Emergency 12V Pump ON
+      digitalWrite(RELAY_PIN, LOW); // Trigger Emergency 12V Pump ON (Active LOW)
       Serial.printf("[ALERT] Flow: 0.00 L/min -> 🚨 BLOCKAGE DETECTED (Pump ON)\n");
     }
     // Stage 2: Low / Restricted Flow -> PARTIAL RESTRICTION (ORANGE on Map)
@@ -132,12 +128,15 @@ void loop() {
       Serial.printf("[INFO]  Flow: %.2f L/min -> ✅ NORMAL WATER FLOW (Blue Stream)\n", flowLitersMin);
     }
 
-    // ── HTTP Post to DrainGuard Mesh Web App ──────────────────
+    // ── HTTPS Post to Live Render Cloud Server ─────────────────
     if (WiFi.status() == WL_CONNECTED) {
+      WiFiClientSecure client;
+      client.setInsecure(); // Required for HTTPS on ESP32 without manual CA cert
+
       HTTPClient http;
-      http.begin(serverUrl);
+      http.begin(client, serverUrl);
       http.addHeader("Content-Type", "application/json");
-      http.setTimeout(3500);
+      http.setTimeout(4500);
 
       // JSON Telemetry Payload
       String payload = "{";
@@ -153,9 +152,9 @@ void loop() {
       int httpResponseCode = http.POST(payload);
 
       if (httpResponseCode > 0) {
-        Serial.printf("📡 Transmitted to App | Response: %d OK\n", httpResponseCode);
+        Serial.printf("☁️ Live Cloud Sync -> https://drainguard-mesh.onrender.com | Response: %d OK\n", httpResponseCode);
       } else {
-        Serial.printf("⚠️ Transmission Failed | Error Code: %d (%s)\n", 
+        Serial.printf("⚠️ Cloud Post Failed | Error Code: %d (%s)\n", 
                       httpResponseCode, http.errorToString(httpResponseCode).c_str());
       }
 
