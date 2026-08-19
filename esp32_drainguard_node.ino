@@ -1,118 +1,145 @@
+/* ─────────────────────────────────────────────────────────────
+ *  DrainGuard Mesh — Production ESP32 IoT Node Firmware
+ *  Pins: D27 (YF-S201 Flow Sensor) | D26 (12V Relay Module)
+ *  Baud Rate: 115200
+ * ───────────────────────────────────────────────────────────── */
+
 #include <WiFi.h>
 #include <HTTPClient.h>
 
-// ── 1. Your Wi-Fi Credentials ───────────────────────────────
+// ── 1. Wi-Fi Settings ─────────────────────────────────────────
 const char* ssid     = "Tomioka";
 const char* password = "0987654321";
 
-// ── 2. Live Public DrainGuard Server URL ────────────────────
-// Works across mobile hotspots, different Wi-Fi networks & 4G/5G
-const char* serverUrl = "https://rude-squids-attack.loca.lt/api/sensors/data";
-const char* SENSOR_ID = "S-06"; // Drainage segment between School & Bus Stand
+// ── 2. DrainGuard Mesh Server Endpoint ────────────────────────
+// Local Wi-Fi endpoint:
+const char* serverUrl = "http://10.35.172.182:3000/api/sensors/data";
 
-// ── 3. Exact Hardware Pins ──────────────────────────────────
-#define FLOW_PIN   27  // D27 (YF-S201 Yellow Signal Wire)
-#define RELAY_PIN  26  // D26 (Relay Control IN)
+// (When deployed on Render, replace with your live URL):
+// const char* serverUrl = "https://your-app.onrender.com/api/sensors/data";
 
-// ── 4. Variables ────────────────────────────────────────────
-volatile int pulseCount = 0;
+const char* SENSOR_ID = "S-06"; // Drainage node between School & Bus Terminal
+
+// ── 3. Pin Assignments ────────────────────────────────────────
+#define FLOW_PIN   27  // GPIO 27 (YF-S201 Signal Wire via Resistor Divider)
+#define RELAY_PIN  26  // GPIO 26 (Relay Control IN)
+
+// ── 4. Global State ───────────────────────────────────────────
+volatile unsigned long pulseCount = 0;
 unsigned long lastSendTime = 0;
+unsigned long lastPulseTime = 0;
 
+// Interrupt Service Routine for Flow Sensor
 void IRAM_ATTR countPulse() {
-  pulseCount++;
+  unsigned long now = micros();
+  // Basic debounce filter (pulses should not be faster than 1000us)
+  if (now - lastPulseTime > 1000) {
+    pulseCount++;
+    lastPulseTime = now;
+  }
 }
 
 void setup() {
-  // Start Serial Monitor at 115200 baud
+  // Initialize Serial Monitor
   Serial.begin(115200);
-  delay(1000); // 1-second delay for Serial port initialization
+  delay(1200);
 
   Serial.println();
-  Serial.println("==========================================");
-  Serial.println("🌊 DrainGuard Mesh — ESP32 Sensor Starting");
-  Serial.println("==========================================");
+  Serial.println("==================================================");
+  Serial.println("🌊 DrainGuard Mesh — ESP32 Sensor Node Online");
+  Serial.println("==================================================");
+  Serial.printf("📌 Flow Sensor Pin: GPIO %d (D27)\n", FLOW_PIN);
+  Serial.printf("📌 Relay Control Pin: GPIO %d (D26)\n", RELAY_PIN);
 
+  // Pin Configurations
   pinMode(FLOW_PIN, INPUT_PULLUP);
   pinMode(RELAY_PIN, OUTPUT);
 
-  // Relay initially OFF (Active-LOW relays use HIGH for OFF)
+  // Relay initially OFF (Standard active-LOW relay modules use HIGH for OFF)
   digitalWrite(RELAY_PIN, HIGH);
 
-  // Attach interrupt to Flow Sensor on D27
+  // Attach Interrupt to D27
   attachInterrupt(digitalPinToInterrupt(FLOW_PIN), countPulse, FALLING);
 
-  // Connect to Wi-Fi network "Tomioka"
-  Serial.print("Connecting to Wi-Fi: ");
-  Serial.println(ssid);
+  // Connect to Wi-Fi
+  Serial.printf("📡 Connecting to Wi-Fi SSID: \"%s\" ", ssid);
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
   int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 35) {
+  while (WiFi.status() != WL_CONNECTED && attempts < 30) {
     delay(500);
     Serial.print(".");
     attempts++;
   }
 
   if (WiFi.status() == WL_CONNECTED) {
-    Serial.println();
-    Serial.println("✅ WiFi Connected Successfully!");
-    Serial.print("📡 ESP32 IP Address: ");
+    Serial.println("\n✅ Wi-Fi Connected Successfully!");
+    Serial.print("🌐 ESP32 IP Address: ");
     Serial.println(WiFi.localIP());
-    Serial.print("🎯 Target Server: ");
+    Serial.print("🎯 Target Server Endpoint: ");
     Serial.println(serverUrl);
-    Serial.println("==========================================");
+    Serial.println("==================================================\n");
   } else {
-    Serial.println();
-    Serial.println("❌ WiFi Connection Failed!");
-    Serial.println("👉 Make sure 'Tomioka' hotspot is 2.4 GHz.");
+    Serial.println("\n❌ Wi-Fi Connection Timeout!");
+    Serial.println("👉 Please check that your 'Tomioka' hotspot is active and in 2.4 GHz mode.");
   }
 }
 
 void loop() {
-  // Read and transmit telemetry every 2 seconds
+  // Transmit telemetry every 2 seconds
   if (millis() - lastSendTime >= 2000) {
+    unsigned long interval = millis() - lastSendTime;
     lastSendTime = millis();
 
-    // ── Flow Rate Calculation ───────────────────────────────
-    // YF-S201: Frequency (Hz) = 7.5 * Q (Q = Liters/min)
-    float pulsesPerSec = (float)pulseCount / 2.0;
-    float flowRate = (pulsesPerSec / 7.5); // Liters/min
-    pulseCount = 0; // Reset counter for next interval
+    // ── Flow Calculation ──────────────────────────────────────
+    // YF-S201 Formula: Frequency (Hz) = 7.5 * Q (Q = Flow rate in L/min)
+    // Frequency = pulses / (interval_in_seconds)
+    noInterrupts();
+    unsigned long currentPulses = pulseCount;
+    pulseCount = 0;
+    interrupts();
 
-    float scaledFlow = flowRate / 10.0;
+    float intervalSec = (float)interval / 1000.0;
+    float frequency = (float)currentPulses / intervalSec;
+    float flowLitersMin = frequency / 7.5; // Flow in L/min
+
+    // Scale flow to approximate m³/s for the visual map simulator
+    float scaledFlow = flowLitersMin / 10.0;
     float waterLevel = 0.25;
     String status = "normal";
 
-    // ── Flow State Classification ───────────────────────────
-    if (flowRate <= 0.2) {
-      // 🚨 ZERO FLOW / COMPLETE BLOCKAGE -> Map turns RED!
+    // ── Three-Stage Flow Logic ────────────────────────────────
+    // Stage 1: Zero / Stopped Flow -> COMPLETE BLOCKAGE (RED on Map)
+    if (flowLitersMin <= 0.2) {
       status = "blocked";
       waterLevel = 0.95;
-      digitalWrite(RELAY_PIN, LOW); // Turn Emergency Pump ON (Active LOW)
-      Serial.println("🚨 ZERO FLOW / COMPLETE BLOCKAGE! (Pump ON)");
-    } 
-    else if (flowRate < 2.5) {
-      // ⚠️ LOW WATER FLOW -> Map turns ORANGE 1st!
+      digitalWrite(RELAY_PIN, LOW); // Trigger Emergency 12V Pump ON
+      Serial.printf("[ALERT] Flow: 0.00 L/min -> 🚨 BLOCKAGE DETECTED (Pump ON)\n");
+    }
+    // Stage 2: Low / Restricted Flow -> PARTIAL RESTRICTION (ORANGE on Map)
+    else if (flowLitersMin < 2.5) {
       status = "low_flow";
       waterLevel = 0.62;
       digitalWrite(RELAY_PIN, HIGH); // Pump Standby
-      Serial.println("⚠️ LOW WATER FLOW DETECTED (Orange Warning)");
-    } 
+      Serial.printf("[WARN]  Flow: %.2f L/min -> ⚠️ LOW WATER FLOW (Orange Warning)\n", flowLitersMin);
+    }
+    // Stage 3: High Continuous Flow -> NORMAL NOMINAL (BLUE on Map)
     else {
-      // ✅ NORMAL FLOW -> Map restores to BLUE!
       status = "normal";
       waterLevel = 0.26;
       digitalWrite(RELAY_PIN, HIGH); // Pump Standby
-      Serial.println("✅ NORMAL WATER FLOW (Continuous Stream)");
+      Serial.printf("[INFO]  Flow: %.2f L/min -> ✅ NORMAL WATER FLOW (Blue Stream)\n", flowLitersMin);
     }
 
-    // ── Transmit JSON Data to DrainGuard Server ─────────────
+    // ── HTTP Post to DrainGuard Mesh Web App ──────────────────
     if (WiFi.status() == WL_CONNECTED) {
       HTTPClient http;
       http.begin(serverUrl);
       http.addHeader("Content-Type", "application/json");
-      http.addHeader("bypass-tunnel-reminder", "true");
+      http.setTimeout(3500);
 
+      // JSON Telemetry Payload
       String payload = "{";
       payload += "\"sensor_id\":\"" + String(SENSOR_ID) + "\",";
       payload += "\"flow_rate\":" + String(scaledFlow, 3) + ",";
@@ -123,18 +150,21 @@ void loop() {
       payload += "\"source\":\"esp32_hardware\"";
       payload += "}";
 
-      Serial.print("Transmitting: ");
-      Serial.println(payload);
+      int httpResponseCode = http.POST(payload);
 
-      int httpResponse = http.POST(payload);
-      Serial.print("Server Response: ");
-      Serial.println(httpResponse);
-      Serial.println("------------------------------------------");
+      if (httpResponseCode > 0) {
+        Serial.printf("📡 Transmitted to App | Response: %d OK\n", httpResponseCode);
+      } else {
+        Serial.printf("⚠️ Transmission Failed | Error Code: %d (%s)\n", 
+                      httpResponseCode, http.errorToString(httpResponseCode).c_str());
+      }
 
       http.end();
     } else {
-      Serial.println("⚠️ WiFi Disconnected. Reconnecting...");
+      Serial.println("⚠️ Wi-Fi Lost. Attempting reconnection...");
       WiFi.reconnect();
     }
+
+    Serial.println("--------------------------------------------------");
   }
 }
